@@ -4,7 +4,12 @@ version = "0.1.0"
 description = "AI backend for QGraph (model orchestration, pipelines, and analysis)"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "fastapi>=0.135.3",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.13.1",
+    "uvicorn>=0.42.0",
+]
 
 [tool.ruff]
 line-length = 100
@@ -12,8 +17,11 @@ line-length = 100
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+pythonpath = ["."]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
 ]
