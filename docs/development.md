@@ -4,6 +4,7 @@
 
 - Python `3.12+`
 - `uv` installed
+- Docker + Docker Compose (for containerized local run)
 
 ## Install Dependencies
 
@@ -11,13 +12,41 @@
 uv sync --dev
 ```
 
-## Run the API Locally
+## Run the API Locally (Native)
 
 ```bash
 uv run uvicorn src.main:app --reload --port 8001
 ```
 
 Service will be available at `http://127.0.0.1:8001`.
+
+## Run the API with Docker Compose (Recommended for Local Integration)
+
+Build and start:
+
+```bash
+docker compose up --build
+```
+
+After the first build:
+
+```bash
+docker compose up
+```
+
+Service is exposed on `http://127.0.0.1:8001`.
+
+Live-reload behavior:
+
+- Compose bind-mounts the repository into the container (`.:/app`)
+- Uvicorn runs with `--reload --reload-dir /app/src`
+- Changes under `src/` are picked up without rebuilding the image
+- Rebuild is only needed when dependencies change (`pyproject.toml` / `uv.lock`)
+
+## Django Connectivity Notes
+
+- If Django runs on your host machine: use `http://127.0.0.1:8001`
+- If Django runs in Docker on the same Compose network: use `http://ai-backend:8001`
 
 ## Quick Smoke Checks
 
