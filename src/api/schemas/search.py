@@ -1,9 +1,11 @@
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 JsonObject = dict[str, Any]
 SearchMode = Literal["sync", "async"]
+SearchJobStatus = Literal["queued", "running", "succeeded", "failed", "canceled"]
 
 
 class SearchPlanRequest(BaseModel):
@@ -72,3 +74,41 @@ class SearchExecuteResponse(BaseModel):
         if len(orders) != len(set(orders)):
             raise ValueError("blocks.order must be unique")
         return self
+
+
+class SearchJobClientRef(BaseModel):
+    query_id: int | None = None
+    execution_id: int | None = None
+
+
+class SearchJobCreateRequest(BaseModel):
+    query: str = Field(min_length=1)
+    filters: JsonObject = Field(default_factory=dict)
+    output_preferences: JsonObject = Field(default_factory=dict)
+    context: JsonObject = Field(default_factory=dict)
+    idempotency_key: str = Field(min_length=1, max_length=128)
+    client_ref: SearchJobClientRef = Field(default_factory=SearchJobClientRef)
+
+
+class SearchJobCreateResponse(BaseModel):
+    job_id: str
+    status: SearchJobStatus
+    created_at: datetime
+    poll_after_seconds: int = Field(ge=0)
+
+
+class SearchJobProgress(BaseModel):
+    stage: str
+    percent: int = Field(ge=0, le=100)
+
+
+class SearchJobStatusResponse(BaseModel):
+    job_id: str
+    status: SearchJobStatus
+    created_at: datetime
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    poll_after_seconds: int = Field(ge=0)
+    result_available: bool
+    error: JsonObject | None = None
+    progress: SearchJobProgress

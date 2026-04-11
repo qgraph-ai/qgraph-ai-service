@@ -10,6 +10,9 @@ Its current job is to provide schema-correct, dummy responses to Django while ke
 - FastAPI request-response service
 - Search planning endpoint: `POST /v1/search/plan`
 - Search execution endpoint: `POST /v1/search/execute`
+- Search async job create endpoint: `POST /v1/search/jobs`
+- Search async job status endpoint: `GET /v1/search/jobs/{job_id}`
+- Search async job result endpoint: `GET /v1/search/jobs/{job_id}/result`
 - Segmentation generation endpoint: `POST /v1/segmentation/generate`
 - Health endpoint: `GET /health`
 

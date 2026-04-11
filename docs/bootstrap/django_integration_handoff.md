@@ -51,6 +51,7 @@ Its main value right now is stable request/response wiring compatible with Djang
 ### `POST /v1/search/execute`
 - Purpose: return structured search payload for Django persistence.
 - Behavior: **dummy content**, contract-correct structure.
+- Intended usage: sync mode execution only.
 - Request shape:
   - `query: str`
   - `filters: object` (optional/default `{}`)
@@ -68,6 +69,41 @@ Its main value right now is stable request/response wiring compatible with Djang
 - Important contract guarantees:
   - `blocks[].order` is unique per response
   - `items[].rank` is unique within each block
+
+### `POST /v1/search/jobs`
+- Purpose: create async search job and return backend job id quickly.
+- Behavior: **dummy job lifecycle**, contract-correct structure.
+- Request shape:
+  - `query: str`
+  - `filters: object` (optional/default `{}`)
+  - `output_preferences: object` (optional/default `{}`)
+  - `context: object` (optional/default `{}`)
+  - `idempotency_key: str` (required)
+  - `client_ref: object` (optional; e.g. `query_id`, `execution_id`)
+- Response shape (`202`):
+  - `job_id`
+  - `status` (initially `"queued"`)
+  - `created_at`
+  - `poll_after_seconds`
+- Contract note:
+  - duplicate active submissions with the same `idempotency_key` return the same job.
+
+### `GET /v1/search/jobs/{job_id}`
+- Purpose: poll backend job state.
+- Behavior: returns queued/running/succeeded lifecycle status with progress metadata.
+- Response shape:
+  - `job_id`, `status`, `created_at`, `started_at`, `completed_at`
+  - `poll_after_seconds`
+  - `result_available`
+  - `error` (currently `null`)
+  - `progress` (`stage`, `percent`)
+
+### `GET /v1/search/jobs/{job_id}/result`
+- Purpose: fetch final execution payload for a completed async job.
+- Behavior:
+  - `200` when result is ready (same shape as `POST /v1/search/execute`)
+  - `409` while job is non-terminal
+  - `404` if `job_id` is unknown
 
 ### `POST /v1/segmentation/generate`
 - Purpose: return AI-style segmentation output payload (for Django ingestion path).
@@ -94,9 +130,12 @@ Its main value right now is stable request/response wiring compatible with Djang
 What Django can replace now:
 
 1. Replace Django-side search planning dummy logic with HTTP call to `POST /v1/search/plan`.
-2. Replace Django-side search execution dummy logic with HTTP call to `POST /v1/search/execute`.
-3. Keep Django orchestration lifecycle (sync/async status, Celery flow) unchanged.
-4. Keep Django persistence mapping unchanged; current AI backend response shapes are built for that.
+2. Replace Django-side sync search execution dummy logic with HTTP call to `POST /v1/search/execute`.
+3. Replace Django-side async execution dummy logic with:
+   - `POST /v1/search/jobs`
+   - `GET /v1/search/jobs/{job_id}`
+   - `GET /v1/search/jobs/{job_id}/result`
+4. Keep Django persistence mapping unchanged; current AI backend response shape for completed results is unchanged.
 
 For segmentation:
 
@@ -114,7 +153,7 @@ Settings/use in Django:
 
 - Responses are placeholder/dummy (not real AI quality).
 - No real retrieval/model inference logic.
-- Request-response only; no async job orchestration inside AI backend.
+- Async job lifecycle is an in-memory mock implementation (non-persistent, resets on service restart).
 - No auth middleware in AI backend (expected to be internal service behind Django/infrastructure boundaries).
 - Error envelope is minimal and currently:
   - validation: `{"error": "validation_error", "detail": [...]}`
@@ -145,7 +184,10 @@ Connectivity assumptions:
 Implement a small HTTP client adapter in Django `search/services/` that calls:
 
 1. `POST /v1/search/plan`
-2. `POST /v1/search/execute`
+2. `POST /v1/search/execute` (sync mode only)
+3. `POST /v1/search/jobs`
+4. `GET /v1/search/jobs/{job_id}`
+5. `GET /v1/search/jobs/{job_id}/result`
 
 Then switch planner/executor placeholders to this adapter while keeping Django lifecycle/persistence code unchanged.
 After that, wire segmentation generation call to `POST /v1/segmentation/generate` using the same pattern.

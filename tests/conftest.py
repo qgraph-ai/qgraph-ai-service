@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -35,6 +37,23 @@ def search_execute_payload():
             "include_explanation": False,
         },
         "context": {"query_id": 123, "execution_id": 456},
+    }
+
+
+@pytest.fixture
+def search_job_create_payload():
+    idempotency_key = f"search-exec-{uuid4().hex[:12]}"
+    return {
+        "query": "verses about patience",
+        "filters": {"surah_ids": [2]},
+        "output_preferences": {
+            "include_summary": True,
+            "include_statistics": True,
+            "include_explanation": False,
+        },
+        "context": {"query_id": 123, "execution_id": 456},
+        "idempotency_key": idempotency_key,
+        "client_ref": {"query_id": 123, "execution_id": 456},
     }
 
 

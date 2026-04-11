@@ -243,15 +243,17 @@ Critical compatibility requirements:
 
 Use for Django startup/integration checks; include service version and model/router version.
 
-### Optional async-in-AI-backend API
+### Endpoint D (required for async mode): search jobs API
 
-Only needed if you want AI backend to manage long-running jobs itself:
-- `POST /v1/search/executions` -> returns `run_id`
-- `GET /v1/search/executions/{run_id}` -> status
-- `GET /v1/search/executions/{run_id}/result` -> final payload
-- `POST /v1/search/executions/{run_id}/cancel`
+For job-based async execution:
+- `POST /v1/search/jobs` -> returns backend `job_id` (`202`)
+- `GET /v1/search/jobs/{job_id}` -> job status/progress
+- `GET /v1/search/jobs/{job_id}/result` -> final payload (`200` when ready, `409` when pending)
 
-Note: Django already has local async orchestration with Celery, so this is optional.
+Contract intent:
+- keep `POST /v1/search/execute` for sync path
+- use jobs API for async path
+- keep final result payload schema identical to `POST /v1/search/execute`
 
 ---
 
@@ -263,7 +265,7 @@ Segmentation model semantics that must be respected:
 - expected snapshot quality: ordered, non-overlapping ranges
 - tag assignments are workspace-scoped in Django
 
-### Endpoint D: generate segmentation for a surah
+### Endpoint E: generate segmentation for a surah
 
 `POST /v1/segmentation/generate`
 
@@ -316,7 +318,7 @@ Django ingestion target:
 - create `SegmentTag` rows (`source=ai`)
 - create `SegmentationOutput` with returned provenance fields
 
-### Endpoint E (optional): tag suggestion for existing segments
+### Endpoint F (optional): tag suggestion for existing segments
 
 `POST /v1/segmentation/suggest-tags`
 
@@ -389,4 +391,3 @@ Primary files for integration context:
 - `segmentation/views.py`
 - `docs/apps/segmentation.md`
 - `qgraph/settings.py`
-

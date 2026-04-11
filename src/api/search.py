@@ -1,10 +1,18 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 
 from src.api.schemas.search import (
     SearchExecuteRequest,
     SearchExecuteResponse,
+    SearchJobCreateRequest,
+    SearchJobCreateResponse,
+    SearchJobStatusResponse,
     SearchPlanRequest,
     SearchPlanResponse,
+)
+from src.services.search_jobs import (
+    create_search_job,
+    get_search_job_result,
+    get_search_job_status,
 )
 from src.services.planning import build_planning_response
 from src.services.search_service import build_search_execute_response
@@ -20,3 +28,43 @@ def search_plan(payload: SearchPlanRequest) -> SearchPlanResponse:
 @router.post("/execute", response_model=SearchExecuteResponse)
 def search_execute(payload: SearchExecuteRequest) -> SearchExecuteResponse:
     return build_search_execute_response(payload)
+
+
+@router.post(
+    "/jobs",
+    response_model=SearchJobCreateResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def search_job_create(payload: SearchJobCreateRequest) -> SearchJobCreateResponse:
+    return create_search_job(payload)
+
+
+@router.get("/jobs/{job_id}", response_model=SearchJobStatusResponse)
+def search_job_status(job_id: str) -> SearchJobStatusResponse:
+    job_status = get_search_job_status(job_id)
+    if job_status is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Search job not found", "job_id": job_id},
+        )
+    return job_status
+
+
+@router.get("/jobs/{job_id}/result", response_model=SearchExecuteResponse)
+def search_job_result(job_id: str) -> SearchExecuteResponse:
+    lookup = get_search_job_result(job_id)
+    if lookup.status is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "Search job not found", "job_id": job_id},
+        )
+    if lookup.result is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Search job result not ready",
+                "job_id": job_id,
+                "status": lookup.status.status,
+            },
+        )
+    return lookup.result

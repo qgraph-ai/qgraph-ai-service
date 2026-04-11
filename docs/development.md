@@ -67,6 +67,20 @@ curl -X POST http://127.0.0.1:8001/v1/search/execute \
 ```
 
 ```bash
+curl -X POST http://127.0.0.1:8001/v1/search/jobs \
+  -H "Content-Type: application/json" \
+  -d '{"query":"verses about patience","filters":{},"output_preferences":{},"context":{},"idempotency_key":"search-exec-1","client_ref":{"query_id":1,"execution_id":1}}'
+```
+
+```bash
+curl http://127.0.0.1:8001/v1/search/jobs/<job_id>
+```
+
+```bash
+curl http://127.0.0.1:8001/v1/search/jobs/<job_id>/result
+```
+
+```bash
 curl -X POST http://127.0.0.1:8001/v1/segmentation/generate \
   -H "Content-Type: application/json" \
   -d '{"surah_id":2,"ayahs":[],"options":{},"context":{}}'
