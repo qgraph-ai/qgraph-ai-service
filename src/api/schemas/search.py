@@ -43,7 +43,7 @@ class SearchResultItem(BaseModel):
 
 
 class SearchResponseBlock(BaseModel):
-    order: int = Field(ge=1)
+    order: int = Field(ge=0)
     block_type: str
     title: str
     payload: JsonObject = Field(default_factory=dict)

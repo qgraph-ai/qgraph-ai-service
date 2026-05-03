@@ -55,7 +55,7 @@ def _build_job_progress(status: SearchJobStatus) -> SearchJobProgress:
     if status == "queued":
         return SearchJobProgress(stage="queued", percent=0)
     if status == "running":
-        return SearchJobProgress(stage="retrieval", percent=65)
+        return SearchJobProgress(stage="mock_search", percent=50)
     if status == "succeeded":
         return SearchJobProgress(stage="completed", percent=100)
     if status == "failed":
