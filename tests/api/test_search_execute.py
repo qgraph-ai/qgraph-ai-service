@@ -34,7 +34,11 @@ def test_search_execute_returns_frontend_v1_mock_blocks(client, search_execute_p
     payload = response.json()
     blocks = payload["blocks"]
     assert blocks[0]["block_type"] == "text"
-    assert {block["block_type"] for block in blocks} <= {"text", "surah_distribution"}
+    assert {block["block_type"] for block in blocks} <= {
+        "text",
+        "markdown",
+        "surah_distribution",
+    }
     for block in blocks:
         assert isinstance(block["payload"], dict)
         assert isinstance(block["provenance"], dict)
@@ -47,7 +51,22 @@ def test_search_execute_returns_frontend_v1_mock_blocks(client, search_execute_p
     assert ">" not in text_payload["details"]
 
 
-def test_search_execute_can_return_text_only_variant(client, search_execute_payload):
+def test_search_execute_returns_text_and_markdown_by_default(client, search_execute_payload):
+    payload = {
+        **search_execute_payload,
+        "query": "light",
+        "filters": {},
+    }
+
+    response = client.post("/v1/search/execute", json=payload)
+    assert response.status_code == 200
+
+    blocks = response.json()["blocks"]
+    assert [block["order"] for block in blocks] == [0, 1]
+    assert [block["block_type"] for block in blocks] == ["text", "markdown"]
+
+
+def test_search_execute_returns_markdown_block(client, search_execute_payload):
     payload = {
         **search_execute_payload,
         "query": "mercy",
@@ -58,8 +77,40 @@ def test_search_execute_can_return_text_only_variant(client, search_execute_payl
     assert response.status_code == 200
 
     blocks = response.json()["blocks"]
-    assert [block["order"] for block in blocks] == [0]
-    assert [block["block_type"] for block in blocks] == ["text"]
+    assert [block["order"] for block in blocks] == [0, 1]
+    assert [block["block_type"] for block in blocks] == ["text", "markdown"]
+
+    markdown_payload = blocks[1]["payload"]
+    assert isinstance(markdown_payload, dict)
+    assert isinstance(markdown_payload["content"], str)
+    assert "## Why this theme matters" in markdown_payload["content"]
+    assert "### Mock observations" in markdown_payload["content"]
+    assert "| Surah | Mock mentions | Note |" in markdown_payload["content"]
+    assert "`r-h-m`" in markdown_payload["content"]
+
+
+def test_search_execute_returns_full_markdown_content(client, search_execute_payload):
+    payload = {
+        **search_execute_payload,
+        "query": "light",
+        "filters": {},
+    }
+
+    response = client.post("/v1/search/execute", json=payload)
+    assert response.status_code == 200
+
+    markdown_blocks = [
+        block for block in response.json()["blocks"] if block["block_type"] == "markdown"
+    ]
+    assert len(markdown_blocks) == 1
+
+    content = markdown_blocks[0]["payload"]["content"]
+    assert "## Why this theme matters" in content
+    assert "### Mock observations" in content
+    assert "| Surah | Mock mentions | Note |" in content
+    assert "```json" in content
+    assert "> This block is synthetic" in content
+    assert "[Quran Corpus](https://corpus.quran.com)" in content
 
 
 def test_search_execute_can_return_distribution_variant_without_filters(
@@ -76,8 +127,12 @@ def test_search_execute_can_return_distribution_variant_without_filters(
     assert response.status_code == 200
 
     blocks = response.json()["blocks"]
-    assert [block["order"] for block in blocks] == [0, 1]
-    assert [block["block_type"] for block in blocks] == ["text", "surah_distribution"]
+    assert [block["order"] for block in blocks] == [0, 1, 2]
+    assert [block["block_type"] for block in blocks] == [
+        "text",
+        "markdown",
+        "surah_distribution",
+    ]
 
 
 def test_search_execute_surahs_filter_controls_distribution_values(client, search_execute_payload):
